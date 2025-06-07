@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Olimpiade Indonesia Cerdas</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap");
+
+      body {
+        font-family: "Fredoka One", cursive;
+        text-align: center;
+        background: linear-gradient(to bottom right, #4d6ef1, #7ba4f9);
+        color: #fff;
+        margin: 0;
+        padding: 0;
+      }
+
+      #board {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(3, 100px);
+        grid-template-rows: repeat(3, 100px);
+        gap: 10px;
+        justify-content: center;
+        margin: 40px auto;
+      }
+
+      .box {
+        background-color: white;
+        border: 4px solid #333;
+        font-size: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        border-radius: 10px;
+        position: relative;
+      }
+      .box {
+        font-size: 60px; /* or larger */
+        line-height: 1;
+      }
+
+      .box img {
+        max-width: 80px;
+        max-height: 80px;
+      }
+
+      #popup,
+      #correctScreen,
+      #wrongScreen,
+      #turnSelect,
+      #gameOverScreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 1000;
+        font-size: 1.5em;
+      }
+
+      #popup {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 1000;
+        font-size: 1.5em;
+        padding: 0 40px; /* Add left and right spacing */
+        box-sizing: border-box; /* Ensures padding doesn't exceed the width */
+        text-align: center;
+      }
+
+      .line {
+        position: absolute;
+        height: 6px;
+        background-color: yellow;
+        transform-origin: left center;
+        z-index: 999;
+      }
+
+      button {
+        margin: 10px;
+        padding: 12px 24px;
+        font-size: 18px;
+        font-family: "Fredoka One", cursive;
+        background-color: #ffcb05;
+        border: none;
+        border-radius: 10px;
+        color: #222;
+        cursor: pointer;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s;
+      }
+
+      button:hover {
+        transform: scale(1.05);
+      }
+
+      #correctScreen h1,
+      #wrongScreen h1,
+      #gameOverScreen h1 {
+        font-size: 4em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="time-big">03:00</h1>
+    <div id="turnSelect">
+      <h2>Siapa yang mulai dulu?</h2>
+      <button onclick="startGame('red');startTimer()">Merah</button>
+      <button onclick="startGame('blue');startTimer()">Biru</button>
+    </div>
+
+    <div id="board"></div>
+
+    <div id="popup" style="display: none">
+      <h2 id="question" style="font-family: georgia, serif">
+        Perlindungan merupakan hakikat dari __________ dan keamanan negara.
+      </h2>
+      <button onclick="handleAnswer(true);">✅</button>
+      <button onclick="handleAnswer(false)">❌</button>
+      <h1 id="time-small">10</h1>
+    </div>
+
+    <div id="correctScreen" style="display: none">
+      <h1>✅</h1>
+      <button onclick="closeCorrectScreen()">Lanjut</button>
+    </div>
+
+    <div id="wrongScreen" style="display: none">
+      <h1>❌</h1>
+      <button onclick="closeWrongScreen()">Lanjut</button>
+    </div>
+
+    <div id="gameOverScreen" style="display: none">
+      <h1 id="gameOverText"></h1>
+      <button onclick="restartGame()">Ulang</button>
+    </div>
+
+    <script>
+      let currentTurn = "red";
+      let startTurn = "red";
+      let boxes = [];
+      let activeBox = null;
+      let gameEnded = false;
+      let timerIntervalSmall;
+
+      const timeBig = document.getElementById("time-big");
+      const timeSmall = document.getElementById("time-small");
+
+      let timerInterval;
+      function startTimer() {
+        // timerBig.textContent = "03:00";
+        // if (timerInterval) clearInterval(timerInterval);
+        let timer = 180; // 3 minutes in seconds
+        timerInterval = setInterval(() => {
+          if (timer <= 0) {
+            clearInterval(timerInterval);
+            endGame("Time's Up!");
+          } else {
+            timer--;
+            const minutes = Math.floor(timer / 60);
+            const seconds = timer % 60;
+            timeBig.textContent = `${String(minutes).padStart(2, "0")}:${String(
+              seconds
+            ).padStart(2, "0")}`;
+          }
+        }, 1000);
+      }
+
+      function smallTimer() {
+        timeSmall.textContent = 10;
+        if (timerIntervalSmall) clearInterval(timerIntervalSmall);
+        let smallTimer = 10; // 10 seconds for the popup
+        timerIntervalSmall = setInterval(() => {
+          if (smallTimer <= 0) {
+            clearInterval(timerIntervalSmall);
+            handleAnswer(false); // Automatically mark as wrong after time runs out
+          } else {
+            smallTimer--;
+            timeSmall.textContent = smallTimer;
+          }
+        }, 1000);
+      }
+
+      function startGame(startColor) {
+        startTurn = startColor;
+        currentTurn = startColor;
+        document.getElementById("turnSelect").style.display = "none";
+        document.getElementById("gameOverScreen").style.display = "none";
+        renderBoard();
+      }
+
+      // function renderBoard() {
+      //   const board = document.getElementById("board");
+      //   board.innerHTML = "";
+      //   boxes = Array(9).fill(null);
+      //   gameEnded = false;
+
+      //   for (let i = 0; i < 9; i++) {
+      //     const div = document.createElement("div");
+      //     div.className = "box";
+      //     div.dataset.index = i;
+      //     div.onclick = () => handleBoxClick(i);
+
+      //     const img = document.createElement("img");
+      //     img.src = `/mnt/data/animal${i + 1}.png`;
+      //     img.alt = `Animal ${i + 1}`;
+      //     div.appendChild(img);
+
+      //     board.appendChild(div);
+      //   }
+      // }
+      function renderBoard() {
+        const board = document.getElementById("board");
+        board.innerHTML = "";
+        boxes = Array(9).fill(null);
+        gameEnded = false;
+
+        const emojis = ["🦁", "🐿️", "🐷", "🐸", "🐻", "🐵", "🐼", "🐘", "🦈"];
+
+        for (let i = 0; i < 9; i++) {
+          const div = document.createElement("div");
+          div.className = "box";
+          div.dataset.index = i;
+          div.onclick = () => handleBoxClick(i);
+
+          div.textContent = emojis[i];
+          div.style.fontSize = "60px"; // 👈 Make emoji large
+          board.appendChild(div);
+        }
+      }
+
+      function handleBoxClick(index) {
+        if (boxes[index] || gameEnded) return;
+        activeBox = index;
+        smallTimer();
+        document.getElementById("popup").style.display = "flex";
+        if (index === 0) {
+          document.getElementById("question").textContent =
+            "Perlindungan merupakan hakikat dari __________ dan keamanan negara.";
+        } else if (index === 1) {
+          document.getElementById("question").textContent =
+            "Tap MPR Nomor VI Tahun 2000 mengatur pemisahan antara TNI dan __________.";
+        } else if (index === 2) {
+          document.getElementById("question").textContent =
+            "Tentara Nasional Indonesia terdiri atas Angkatan Darat, Angkatan Laut, dan Angkatan __________.";
+        } else if (index === 3) {
+          document.getElementById("question").textContent =
+            "Kepolisian Negara Republik Indonesia bertugas melindungi, mengayomi, melayani masyarakat, serta menegakkan __________.";
+        } else if (index === 4) {
+          document.getElementById("question").textContent =
+            "Sistem pertahanan dan keamanan negara dilaksanakan melalui sistem pertahanan dan keamanan rakyat __________.";
+        } else if (index === 5) {
+          document.getElementById("question").textContent =
+            "Tujuan negara Indonesia salah satunya adalah ikut melaksanakan ketertiban __________.";
+        } else if (index === 6) {
+          document.getElementById("question").textContent =
+            "Tiap warga negara memiliki hak dan kewajiban dalam usaha __________ negara.";
+        } else if (index === 7) {
+          document.getElementById("question").innerHTML =
+            "Pembangunan desa yang demokratis juga dikenal sebagai <i>democratic __________ development</i>.";
+        } else if (index === 8)
+          document.getElementById("question").textContent =
+            "Kepolisian Negara Republik Indonesia sebagai alat negara yang menjaga __________ dan ketertiban masyarakat.";
+      }
+
+      function handleAnswer(isCorrect) {
+        document.getElementById("popup").style.display = "none";
+        if (timerIntervalSmall) {
+          clearInterval(timerIntervalSmall);
+          timerIntervalSmall = null;
+        }
+        // smallTimer();
+
+        if (isCorrect) {
+          boxes[activeBox] = currentTurn;
+          const box = document.querySelector(`.box[data-index='${activeBox}']`);
+          box.style.backgroundColor = currentTurn;
+          const overlay = document.createElement("div");
+          overlay.textContent = currentTurn === "red" ? "" : "";
+          overlay.style.position = "absolute";
+          overlay.style.fontSize = "2em";
+          box.appendChild(overlay);
+          document.getElementById("correctScreen").style.display = "flex";
+          checkWin();
+        } else {
+          document.getElementById("wrongScreen").style.display = "flex";
+        }
+      }
+
+      function closeCorrectScreen() {
+        document.getElementById("correctScreen").style.display = "none";
+        switchTurn();
+      }
+
+      function closeWrongScreen() {
+        document.getElementById("wrongScreen").style.display = "none";
+        switchTurn();
+      }
+
+      function switchTurn() {
+        if (!gameEnded) {
+          currentTurn = currentTurn === "red" ? "blue" : "red";
+        }
+      }
+
+      function checkWin() {
+        const winCombos = [
+          [0, 1, 2],
+          [3, 4, 5],
+          [6, 7, 8],
+          [0, 3, 6],
+          [1, 4, 7],
+          [2, 5, 8],
+          [0, 4, 8],
+          [2, 4, 6],
+        ];
+
+        for (const combo of winCombos) {
+          const [a, b, c] = combo;
+          if (boxes[a] && boxes[a] === boxes[b] && boxes[a] === boxes[c]) {
+            drawWinLine(combo);
+            if (boxes[a] === "red") {
+              endGame("Merah menang!");
+            } else if (boxes[a] === "blue") {
+              endGame("Biru menang!");
+            }
+            // endGame(`${boxes[a].toUpperCase()} menang!`);
+            return;
+          }
+        }
+
+        if (boxes.every((b) => b !== null)) {
+          endGame("Seri!");
+        }
+      }
+
+      function endGame(message) {
+        gameEnded = true;
+        document.getElementById("gameOverText").textContent = message;
+        document.getElementById("gameOverScreen").style.display = "flex";
+      }
+
+      function restartGame() {
+        location.reload();
+        startGame(startTurn);
+        startTimer();
+      }
+
+      function drawWinLine(combo) {
+        const board = document.getElementById("board");
+        const boxElements = board.querySelectorAll(".box");
+        const box1 = boxElements[combo[0]];
+        const box2 = boxElements[combo[2]];
+
+        const rect1 = box1.getBoundingClientRect();
+        const rect2 = box2.getBoundingClientRect();
+        const boardRect = board.getBoundingClientRect();
+
+        const x1 = rect1.left + rect1.width / 2 - boardRect.left;
+        const y1 = rect1.top + rect1.height / 2 - boardRect.top;
+        const x2 = rect2.left + rect2.width / 2 - boardRect.left;
+        const y2 = rect2.top + rect2.height / 2 - boardRect.top;
+
+        const length = Math.hypot(x2 - x1, y2 - y1);
+        const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+
+        const line = document.createElement("div");
+        line.className = "line";
+        line.style.width = `${length}px`;
+        line.style.left = `${x1}px`;
+        line.style.top = `${y1}px`;
+        line.style.transform = `rotate(${angle}deg)`;
+
+        board.appendChild(line);
+      }
+    </script>
+  </body>
+</html>
