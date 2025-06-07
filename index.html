@@ -120,6 +120,8 @@
     </style>
   </head>
   <body>
+    <audio id="correctSound" src="correct.mp3" preload="auto"></audio>
+    <audio id="wrongSound" src="wrong.mp3" preload="auto"></audio>
     <h1 id="time-big">03:00</h1>
     <div id="turnSelect">
       <h2>Siapa yang mulai dulu?</h2>
@@ -160,6 +162,9 @@
       let activeBox = null;
       let gameEnded = false;
       let timerIntervalSmall;
+
+      const correctSound = document.getElementById("correctSound");
+      const wrongSound = document.getElementById("wrongSound");
 
       const timeBig = document.getElementById("time-big");
       const timeSmall = document.getElementById("time-small");
@@ -290,6 +295,7 @@
         // smallTimer();
 
         if (isCorrect) {
+          correctSound.play();
           boxes[activeBox] = currentTurn;
           const box = document.querySelector(`.box[data-index='${activeBox}']`);
           box.style.backgroundColor = currentTurn;
@@ -301,17 +307,22 @@
           document.getElementById("correctScreen").style.display = "flex";
           checkWin();
         } else {
+          wrongSound.play();
           document.getElementById("wrongScreen").style.display = "flex";
         }
       }
 
       function closeCorrectScreen() {
         document.getElementById("correctScreen").style.display = "none";
+        correctSound.pause();
+        correctSound.currentTime = 0;
         switchTurn();
       }
 
       function closeWrongScreen() {
         document.getElementById("wrongScreen").style.display = "none";
+        wrongSound.pause();
+        wrongSound.currentTime = 0;
         switchTurn();
       }
 
