@@ -122,6 +122,7 @@
   <body>
     <audio id="correctSound" src="correct.mp3" preload="auto"></audio>
     <audio id="wrongSound" src="wrong.mp3" preload="auto"></audio>
+    <audio src="time.mp3" preload="auto" id="timerSound"></audio>
     <h1 id="time-big">03:00</h1>
     <div id="turnSelect">
       <h2>Siapa yang mulai dulu?</h2>
@@ -162,9 +163,12 @@
       let activeBox = null;
       let gameEnded = false;
       let timerIntervalSmall;
+      let redScore = 0;
+      let blueScore = 0;
 
       const correctSound = document.getElementById("correctSound");
       const wrongSound = document.getElementById("wrongSound");
+      const timerSound = document.getElementById("timerSound");
 
       const timeBig = document.getElementById("time-big");
       const timeSmall = document.getElementById("time-small");
@@ -195,10 +199,16 @@
         let smallTimer = 10; // 10 seconds for the popup
         timerIntervalSmall = setInterval(() => {
           if (smallTimer <= 0) {
-            clearInterval(timerIntervalSmall);
-            handleAnswer(false); // Automatically mark as wrong after time runs out
+            if (smallTimer <= -5) {
+              clearInterval(timerIntervalSmall);
+              handleAnswer(false); // Automatically mark as wrong after time runs out
+            }
+            smallTimer--;
+            timeSmall.textContent = "0";
           } else {
             smallTimer--;
+            timerSound.play();
+            timerSound.currentTime = 0; // Reset sound to play from the start
             timeSmall.textContent = smallTimer;
           }
         }, 1000);
@@ -305,7 +315,14 @@
           overlay.style.fontSize = "2em";
           box.appendChild(overlay);
           document.getElementById("correctScreen").style.display = "flex";
+          if (currentTurn === "red") {
+            redScore += 10;
+          } else {
+            blueScore += 10;
+          }
+
           checkWin();
+          console.log(`Red Score: ${redScore}, Blue Score: ${blueScore}`);
         } else {
           wrongSound.play();
           document.getElementById("wrongScreen").style.display = "flex";
@@ -349,17 +366,17 @@
           if (boxes[a] && boxes[a] === boxes[b] && boxes[a] === boxes[c]) {
             drawWinLine(combo);
             if (boxes[a] === "red") {
-              endGame("Merah menang!");
+              redScore += 30;
             } else if (boxes[a] === "blue") {
-              endGame("Biru menang!");
+              blueScore += 30;
             }
             // endGame(`${boxes[a].toUpperCase()} menang!`);
-            return;
+            //return;
           }
         }
 
         if (boxes.every((b) => b !== null)) {
-          endGame("Seri!");
+          endGame("Semua kotak habis!");
         }
       }
 
@@ -367,6 +384,7 @@
         gameEnded = true;
         document.getElementById("gameOverText").textContent = message;
         document.getElementById("gameOverScreen").style.display = "flex";
+        console.log(`Red Score: ${redScore}, Blue Score: ${blueScore}`);
       }
 
       function restartGame() {
